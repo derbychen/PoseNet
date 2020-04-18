@@ -17,6 +17,7 @@ import torch.optim as optim
 from utils.training import train, validate, model_results_pred_gt
 
 from datasets.apolloscape import Apolloscape
+from datasets.kitti import Kitti
 
 from utils.common import draw_poses
 from utils.common import draw_record
@@ -122,13 +123,13 @@ def main():
 
 
     train_record = None # 'Record001'
-    train_dataset = Apolloscape(root=args.data, road=args.road,
+    train_dataset = Kitti(root=args.data, road=args.road,
         transform=transform, record=train_record, normalize_poses=True,
         pose_format='quat', train=True, cache_transform=not args.no_cache_transform,
         stereo=args.stereo)
 
     val_record = None # 'Record011'
-    val_dataset = Apolloscape(root=args.data, road=args.road,
+    val_dataset = Kitti(root=args.data, road=args.road,
         transform=transform, record=val_record, normalize_poses=True,
         pose_format='quat', train=False, cache_transform=not args.no_cache_transform,
         stereo=args.stereo)

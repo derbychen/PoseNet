@@ -1,5 +1,6 @@
 import torch
 from datasets.apolloscape import Apolloscape
+from datasets.kitti import Kitti
 from utils.common import draw_poses, calc_poses_params
 from utils.common import draw_record, make_video
 import numpy as np
@@ -41,7 +42,8 @@ def main():
     args = get_args()
 
     transform = transforms.Compose([transforms.Resize(250)])
-    apollo_dataset = Apolloscape(root=os.path.join(args.data), road=args.road, transform=transform, record=args.record)
+    # apollo_dataset = Apolloscape(root=os.path.join(args.data), road=args.road, transform=transform, record=args.record)
+    apollo_dataset = Kitti(root=os.path.join(args.data), road=args.road, transform=transform, record=args.record)
 
     print(apollo_dataset)
 
