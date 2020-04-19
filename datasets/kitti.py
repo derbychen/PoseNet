@@ -310,7 +310,7 @@ class Kitti(Dataset):
         # self.records_list = sorted(self.records_list)
         # print("records_lists", self.records_list)
         ##records_lists ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'...'21']
-        # self.records_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
+        self.records_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
 
         if not len(self.records_list):
             warnings.warn("Empty records list in provided dataset '{}' for road '{}'".format(self.root, self.road))
@@ -320,8 +320,8 @@ class Kitti(Dataset):
         # self.cameras_list = sorted(os.listdir(os.path.join(image_dir, self.records_list[0])),
         #                            reverse=not self.apollo_original_order)
         ## self.cameras_list = ['calib.txt', 'image_0', 'image_1', 'times.txt']
-        # self.cameras_list = ['image_0', 'image_1']
-        self.cameras_list = ['image_2', 'image_3']
+        self.cameras_list = ['image_0', 'image_1']
+        # self.cameras_list = ['image_2', 'image_3']
 
         # print(self.cameras_list) ## 
         self.metadata_road_dir = os.path.join('_metadata', road)
