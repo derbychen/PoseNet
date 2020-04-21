@@ -18,6 +18,7 @@ from utils.training import train, validate, model_results_pred_gt
 
 from datasets.apolloscape import Apolloscape
 from datasets.kitti import Kitti
+from datasets.tum import TUM
 
 from utils.common import draw_poses
 from utils.common import draw_record

@@ -13,21 +13,17 @@ import warnings
 import pickle
 import time
 
-def read_poses_to_SE3(fname):
-    """Reads poses from N x 12 format.
-        Return SE3 format (Dict).
-    """
-    # poses = {}
-    poses= []
-    last = np.array([0, 0, 0, 1])
+def read_poses_quat(fname):
+    poses = {}
     with open(fname) as f:
         reader = csv.reader(f, delimiter=' ')
-        
-        for i, row in enumerate(reader):
-            pose = np.asarray(row[:12], dtype=np.float).reshape(3, 4)
-            pose = np.vstack((pose, last))
-            poses.append(pose)
-    return poses ## from N X 12 to SE(3)  
+        for row in reader:
+            if row[1] == 'NaN':
+                continue
+            # print(row[1:])
+            pose = np.array(row[1:], dtype=np.float)
+            poses[row[0]] = pose
+    return poses ## N x 7
 
 def read_poses_dict(fname):
     """Reads poses.txt file from Apolloscape dataset
@@ -72,8 +68,7 @@ def read_poses_for_camera(record_path):
     #     # Sample type dataset (aka zpark-sample)
     #     poses_path = os.path.join(record_path, camera_name + '.txt')
     #     poses = read_poses_dict_6(poses_path);
-
-    poses = read_poses_to_SE3(record_path)
+    poses = read_poses_quat(record_path)
     return poses ## from Euler to SE(3)
 
 
@@ -106,29 +101,38 @@ def read_all_data(image_dir, pose_dir, records_list, cameras_list,
     print("records_list_read_all_data = ", records_list)
     print("cameras_list_read_all_data = ", cameras_list)
     '''
-    image_dir_read_all_data =  /home/hsuan/dataset/sequences
-    pose_dir_read_all_data =  /home/hsuan/dataset/poses
-    records_list_read_all_data =  ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21']
-    cameras_list_read_all_data =  ['image_0', 'image_1']
+    pose_dir =  /home/hsuan/Desktop/TUM/sequences
+    image_dir_read_all_data =  /home/hsuan/Desktop/TUM/sequences
+    pose_dir_read_all_data =  /home/hsuan/Desktop/TUM/sequences
+    records_list_read_all_data =  ['sequence_02']
+    cameras_list_read_all_data =  ['image', 'image']
     '''
-
     d_images = []
-    d_poses = np.empty((0, 4, 4))
+    d_poses = np.empty((0, 7))
     d_records = []
     skipped_inc = 0
     skipped_other = 0
-    for i, r in enumerate(records_list[:11]):
-        cam1s = sorted(glob.glob(os.path.join(image_dir, r, cameras_list[0], '*.png')),
+    for i, r in enumerate(records_list):
+        cam1s = sorted(glob.glob(os.path.join(image_dir, r, cameras_list[0], '*.jpg')),
                        reverse=not apollo_original_order)
-        cam2s = sorted(glob.glob(os.path.join(image_dir, r, cameras_list[1], '*.png')),
+        cam2s = sorted(glob.glob(os.path.join(image_dir, r, cameras_list[1], '*.jpg')),
                        reverse=not apollo_original_order)
 
         # Read poses for first camera
-        pose1s = read_poses_for_camera(os.path.join(pose_dir, r + ".txt"))
-        print("pose1s_len = ", len(pose1s))
+        pose1s = read_poses_for_camera(os.path.join(pose_dir, r, "groundtruthSync.txt"))
+        print(i, 'pose_len = ', len(pose1s))
         # Read poses for second camera
-        pose2s = read_poses_for_camera(os.path.join(pose_dir, r + ".txt"))
-
+        pose2s = pose1s.copy()
+        
+        #hash table
+        pic_id = {}
+        fname = os.path.join(pose_dir, r, "times.txt")
+        with open(fname) as f:
+            reader = csv.reader(f, delimiter=' ')
+            for row in reader:
+                # print(row[1:])
+                pic_id[row[0] + ".jpg"] = row[1] 
+        
         c1_idx = 0
         c2_idx = 0
         while c1_idx < len(cam1s) and c2_idx < len(cam2s):
@@ -153,17 +157,24 @@ def read_all_data(image_dir, pose_dir, records_list, cameras_list,
 
                 # Images has equal timing (filename prefix) so add them to data.
                 
-                # First image
-                d_images.append(c1)
-                # print("c1=" ,c1)
+                # if c1.split('/')[-1] not in pose1s:
+                    # continue
+                # First image            
+                # print("c1=" ,c1.split('/')[-1])
                 # print("c1 idx =  ", c1_idx)
-                d_poses = np.vstack((d_poses, np.expand_dims(pose1s[c1_idx], axis=0)))
-                d_records.append(r)
+                # print("test hash =", pic_id[c1.split('/')[-1]])
+                test_ = pic_id[c1.split('/')[-1]]
+                # print('test', os.path.basename(test_))
+                if test_ in pose1s:
+                    # print("Yes 'test' key exists in dict")
+                    d_images.append(c1)    
+                    d_poses = np.vstack((d_poses, np.expand_dims(pose1s[os.path.basename(test_)], axis=0)))
+                    d_records.append(r)
 
-                # Second image
-                d_images.append(c2)
-                d_poses = np.vstack((d_poses, np.expand_dims(pose2s[c2_idx], axis=0)))
-                d_records.append(r)
+                    # Second image
+                    d_images.append(c2)
+                    d_poses = np.vstack((d_poses, np.expand_dims(pose2s[os.path.basename(test_)], axis=0)))
+                    d_records.append(r)
 
 
                 # Continue with the next pair of images
@@ -179,27 +190,26 @@ def process_poses(all_poses, pose_format='full-mat',
 
 
     # pose_format value here is the default(current) representation
-    _, _, poses_mean, poses_std = calc_poses_params(all_poses, pose_format='full-mat')
+    _, _, poses_mean, poses_std = calc_poses_params(all_poses, pose_format='quat')
 
     # print('poses_mean = {}'.format(poses_mean))
     # print('poses_std = {}'.format(poses_std))
 
 
     # Default pose format is full-mat
-    new_poses = all_poses
-    if pose_format == 'quat':
-        # Convert to quaternions
-        new_poses = np.zeros((len(all_poses), 7))
-        for i in range(len(all_poses)):
-            p = all_poses[i]
-            R = p[:3, :3]
-            t = p[:3, 3]
-            q = txq.mat2quat(R)
-            # Constrain rotations to one hemisphere
-            q *= np.sign(q[0])
-            new_poses[i, :3] = t
-            new_poses[i, 3:] = q
-        all_poses = new_poses
+    # if pose_format == 'quat':
+    #     # Convert to quaternions
+    #     new_poses = np.zeros((len(all_poses), 7))
+    #     for i in range(len(all_poses)):
+    #         p = all_poses[i]
+    #         R = p[:3, :3]
+    #         t = p[:3, 3]
+    #         q = txq.mat2quat(R)
+    #         # Constrain rotations to one hemisphere
+    #         q *= np.sign(q[0])
+    #         new_poses[i, :3] = t
+    #         new_poses[i, 3:] = q
+    #     all_poses = new_poses
 
 
     if normalize_poses:
@@ -212,7 +222,6 @@ def process_poses(all_poses, pose_format='full-mat',
             all_poses[:, :3, 3] = np.divide(all_poses[:, :3, 3], poses_std, where=poses_std!=0)
 
     # print('all_poses samples = {}'.format(all_poses[:10]))
-
     return all_poses, poses_mean, poses_std
 
 
@@ -244,21 +253,21 @@ def transforms_to_id(transforms):
     return tname
 
 
-class Kitti(Dataset):
-    """Kitti dataset"""
+class TUM(Dataset):
+    """TUM dataset"""
 
     # Validatation ratio
     val_ratio = 0.25
 
-    def __init__(self, root, road="dataset", transform=None, record=None,
-                 normalize_poses=False, pose_format='full-mat', train=None,
-                 cache_transform=False, stereo=False):
+    def __init__(self, root, road="TUM", transform=None, record=None,
+                 normalize_poses=False, pose_format='quat', train=None,
+                 cache_transform=False, stereo=True):
         """
             Args:
-                root (string): Dataset directory 
-                road (string): Road subdir /datset
+                root (string): Dataset directory
+                road (string): Road subdir
                 transform (callable, optional): A function/transform, similar to other PyTorch datasets
-                record (string): Record name from dataset. Dataset organized in a structure '{road}/{00,01..,10}'
+                record (string): Record name from dataset. Dataset organized in a structure '{road}/{sequence_02 ...}'
                 pose_format (string): One of 'full-mat', or 'quat'
                 train (bool): default None - use all dataset, True - use just train dataset,
                               False - use val portion of a dataset if `train` is not None Records selection
@@ -293,24 +302,21 @@ class Kitti(Dataset):
 
 
         # Resolve pose_dir
-        pose_dir = os.path.join(self.road_path, "poses")
-        
-        if not os.path.isdir(pose_dir):
-            # Sample type dataset (aka zpark-sample)
-            pose_dir = os.path.join(self.road_path, "pose")
+        pose_dir = image_dir
+        # if not os.path.isdir(pose_dir):
+        #     # Sample type dataset (aka zpark-sample)
+        #     pose_dir = os.path.join(self.road_path, "pose")
 
-            # Reset flag, we will use it for Camera orders and images
-            self.apollo_original_order = False
-        if not os.path.isdir(pose_dir):
-            warnings.warn("Pose directory can't be find in dataset path '{}'. " +
-                          "Should be either 'Pose' or 'pose'".format(self.road_path))
+        #     # Reset flag, we will use it for Camera orders and images
+        #     self.apollo_original_order = False
+        # if not os.path.isdir(pose_dir):
+        #     warnings.warn("Pose directory can't be find in dataset path '{}'. " +
+        #                   "Should be either 'Pose' or 'pose'".format(self.road_path))
 
         print("pose_dir = ", pose_dir)
-        # self.records_list = [f for f in os.listdir(image_dir) if f not in [".DS_Store"]]
-        # self.records_list = sorted(self.records_list)
-        # print("records_lists", self.records_list)
-        ##records_lists ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'...'21']
-        self.records_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
+        self.records_list = [f for f in os.listdir(image_dir) if f not in [".DS_Store"]]
+        self.records_list = sorted(self.records_list)
+
 
         if not len(self.records_list):
             warnings.warn("Empty records list in provided dataset '{}' for road '{}'".format(self.root, self.road))
@@ -319,13 +325,11 @@ class Kitti(Dataset):
         # which is an opposite of sorted as in original apollo datasets
         # self.cameras_list = sorted(os.listdir(os.path.join(image_dir, self.records_list[0])),
         #                            reverse=not self.apollo_original_order)
-        ## self.cameras_list = ['calib.txt', 'image_0', 'image_1', 'times.txt']
-        self.cameras_list = ['image_0', 'image_1']
-        # self.cameras_list = ['image_2', 'image_3']
 
-        # print(self.cameras_list) ## 
+        self.cameras_list = ['image', 'image']
+
         self.metadata_road_dir = os.path.join('_metadata', road)
-        # print(self.metadata_road_dir)
+
 
         # Read all data        
         self.d_images, self.d_poses, self.d_records = read_all_data(image_dir, pose_dir,
@@ -338,6 +342,7 @@ class Kitti(Dataset):
         self.d_poses, poses_mean, poses_std = process_poses(self.d_poses,
                 pose_format=self.pose_format,
                 normalize_poses=self.normalize_poses)
+
         self.poses_mean = poses_mean
         self.poses_std = poses_std
 #         print('poses_mean = {}'.format(self.poses_mean))

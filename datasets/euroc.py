@@ -244,8 +244,8 @@ def transforms_to_id(transforms):
     return tname
 
 
-class Kitti(Dataset):
-    """Kitti dataset"""
+class EuRoC(Dataset):
+    """EuRoC dataset"""
 
     # Validatation ratio
     val_ratio = 0.25
@@ -424,13 +424,13 @@ class Kitti(Dataset):
 
         # Save train.txt
         with open(os.path.join(trainval_split_dir, 'train.txt'), 'w') as f:
-            for s in self.d_images:
+            for s in self.d_images[:l]:
                 f.write('{}\n'.format(get_rec_path(s)))
         # print('saved to {}'.format(os.path.join(trainval_split_dir, 'train.txt')))
 
         # Save val.txt
         with open(os.path.join(trainval_split_dir, 'val.txt'), 'w') as f:
-            for s in self.d_images:
+            for s in self.d_images[l:]:
                 f.write('{}\n'.format(get_rec_path(s)))
         # print('saved to {}'.format(os.path.join(trainval_split_dir, 'val.txt')))
 
