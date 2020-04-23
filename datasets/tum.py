@@ -96,10 +96,10 @@ def read_all_data(image_dir, pose_dir, records_list, cameras_list,
         apollo_original_order=False, stereo=True):
     # iterate over all records and store it in internal data
 #     data = []
-    print("image_dir_read_all_data = ", image_dir)
-    print("pose_dir_read_all_data = ", pose_dir)
-    print("records_list_read_all_data = ", records_list)
-    print("cameras_list_read_all_data = ", cameras_list)
+    # print("image_dir_read_all_data = ", image_dir)
+    # print("pose_dir_read_all_data = ", pose_dir)
+    # print("records_list_read_all_data = ", records_list)
+    # print("cameras_list_read_all_data = ", cameras_list)
     '''
     pose_dir =  /home/hsuan/Desktop/TUM/sequences
     image_dir_read_all_data =  /home/hsuan/Desktop/TUM/sequences
@@ -120,7 +120,7 @@ def read_all_data(image_dir, pose_dir, records_list, cameras_list,
 
         # Read poses for first camera
         pose1s = read_poses_for_camera(os.path.join(pose_dir, r, "groundtruthSync.txt"))
-        print(i, 'pose_len = ', len(pose1s))
+        # print(i, 'pose_len = ', len(pose1s))
         # Read poses for second camera
         pose2s = pose1s.copy()
         
